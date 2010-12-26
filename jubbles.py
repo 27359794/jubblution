@@ -2,20 +2,29 @@ import pygame
 import random
 import math
 
+# Screen details
 SCREEN_SIZE = (640, 480)
-HORIZONTAL_RANGE = (0, SCREEN_SIZE[0])
-VERTICAL_RANGE = (0, SCREEN_SIZE[1])
-
+EDGE_AVOIDANCE = 30
+HORIZONTAL_RANGE = (EDGE_AVOIDANCE, SCREEN_SIZE[0]-EDGE_AVOIDANCE)
+VERTICAL_RANGE = (EDGE_AVOIDANCE, SCREEN_SIZE[1]-EDGE_AVOIDANCE)
 BG_COLOUR = (255, 255, 255)
+FRAME_RATE = 100
 
+# Jubble details
 DEF_COLOUR = (255, 0, 0)
 DEF_SIZE = 10
-
 TURN_ANGLE = math.pi / 10
+
+# Misc details
+ANGLE_RIGHT = 0.0
+ANGLE_UP = math.pi * 1.5
+ANGLE_LEFT = math.pi
+ANGLE_DOWN = math.pi / 2
+
 
 class Jubble(object):
 
-    """A Jubble."""
+    """A jubble."""
 
     def __init__(self, screen):
         self.screen = screen
@@ -36,9 +45,8 @@ class Jubble(object):
             self.angle = math.atan2(self.goal_y-self.y,
                                     self.goal_x-self.x)
         else:
-            # Add some randomness to the walk
+            # Do a random walk
             self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
-
 
         # If the distance from here to the goal is shorter than the distance the
         # next move will take you, just move directly to the goal
@@ -50,21 +58,13 @@ class Jubble(object):
             self.x = self.goal_x
             self.y = self.goal_y
 
+        # Update the position of the jubble
         self.x += self.speed * math.cos(self.angle)
         self.y += self.speed * math.sin(self.angle)
 
-        if self.has_goal and self.x == self.goal_x and self.y == self.goal_y:
-            self.has_goal = False
-
-
-        print self.x, self.goal_x
-
-        if self.x < HORIZONTAL_RANGE[0] or\
-           self.x > HORIZONTAL_RANGE[1] or\
-           self.y < VERTICAL_RANGE[0] or\
-           self.y > VERTICAL_RANGE[1]:
-            print 'edge'
-
+        # Make sure you stay well on the map
+        self.correct_offmap_drift()
+        
     def set_coord_goal(self, gx, gy):
         """Set an (x,y) goal for the jubble to head toward.
 
@@ -72,17 +72,28 @@ class Jubble(object):
         (i.e. you never want to go somewhere off the surface of the earth unless
         you're an astronaut) and because arctan only likes it this way.
 
+        Both coordinates should also be within the bounds of earth.
+
         """
-        print "new goal: ", gx, gy
-        assert (gx >= 0)
-        assert (gy >= 0)
+        # If the goal is in bounds, set it
+        # Otherwise, print an error to stdout
+        if (gx >= HORIZONTAL_RANGE[0] and gx <= HORIZONTAL_RANGE[1]) and\
+           (gy >= VERTICAL_RANGE[0] and gy <= VERTICAL_RANGE[1]):
+            self.has_goal = True
+            self.goal_x = gx
+            self.goal_y = gy
+        else:
+            print 'Invalid goal issued!'
 
-        self.has_goal = True
-        self.goal_x = gx
-        self.goal_y = gy
-
+    def correct_offmap_drift(self):
+        """If you find yourself heading off the map, correct your trajectory."""
+        if self.x <= HORIZONTAL_RANGE[0]:  self.angle = ANGLE_RIGHT
+        if self.x >= HORIZONTAL_RANGE[1]:  self.angle = ANGLE_LEFT
+        if self.y <= VERTICAL_RANGE[0]:    self.angle = ANGLE_DOWN
+        if self.y >= VERTICAL_RANGE[1]:    self.angle = ANGLE_UP
 
     def draw(self):
+        """Draw the jubble sprite."""
         pygame.draw.circle(self.screen, DEF_COLOUR, (self.x, self.y), DEF_SIZE)
 
 
@@ -110,10 +121,9 @@ def main():
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 jubble1.set_coord_goal(*e.pos)
                 
-
         # refresh display
         pygame.display.flip()
-        clock.tick(30)
+        clock.tick(FRAME_RATE)
 
 
 def blueMoon(chance):
