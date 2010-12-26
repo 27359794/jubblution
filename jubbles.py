@@ -8,7 +8,7 @@ EDGE_AVOIDANCE = 30
 HORIZONTAL_RANGE = (EDGE_AVOIDANCE, SCREEN_SIZE[0]-EDGE_AVOIDANCE)
 VERTICAL_RANGE = (EDGE_AVOIDANCE, SCREEN_SIZE[1]-EDGE_AVOIDANCE)
 BG_COLOUR = (255, 255, 255)
-FRAME_RATE = 100
+FRAME_RATE = 60
 
 # Jubble details
 DEF_COLOUR = (255, 0, 0)
@@ -40,12 +40,18 @@ class Jubble(object):
         self.goal_y = 0
 
     def update(self):
+        """Update the position and status of the jubble by taking into account
+        all relevant details.
+        
+        Right now, this is limited to checking if we have a goal set for this
+        jubble (in which case we move toward that goal), randomly walking and
+        making sure we stay within the confines of the map.
+
+        """
+        # Head toward the goal if we have one. Otherwise, do a random walk
         if self.has_goal:
-            # Head toward our goal
-            self.angle = math.atan2(self.goal_y-self.y,
-                                    self.goal_x-self.x)
+            self.angle = math.atan2(self.goal_y-self.y, self.goal_x-self.x)
         else:
-            # Do a random walk
             self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
 
         # If the distance from here to the goal is shorter than the distance the
@@ -68,15 +74,11 @@ class Jubble(object):
     def set_coord_goal(self, gx, gy):
         """Set an (x,y) goal for the jubble to head toward.
 
-        Both coordinates must be positive, both because this makes logical sense
-        (i.e. you never want to go somewhere off the surface of the earth unless
-        you're an astronaut) and because arctan only likes it this way.
-
-        Both coordinates should also be within the bounds of earth.
+        Both coordinates must be within the bounds of the map or else the goal
+        set request will be ignored and a message saying so will be sent to
+        stdout.
 
         """
-        # If the goal is in bounds, set it
-        # Otherwise, print an error to stdout
         if (gx >= HORIZONTAL_RANGE[0] and gx <= HORIZONTAL_RANGE[1]) and\
            (gy >= VERTICAL_RANGE[0] and gy <= VERTICAL_RANGE[1]):
             self.has_goal = True
@@ -106,31 +108,35 @@ def main():
     running = True
 
     while running:
-        # clear screen
+        # Clear the screen and update jubbles
         screen.fill(BG_COLOUR)
-
-        # update jubbles
         jubble1.update()
         jubble1.draw()
         
-        # check for quit event
         for e in pygame.event.get():
+            # If we receive a quit event (window close), stop running
             if e.type == pygame.QUIT:
                 running = False
-
+            # If we receive a mouse click, set a coordinate goal for our jubble
+            # at the position of the click
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 jubble1.set_coord_goal(*e.pos)
                 
-        # refresh display
+        # Refresh the display
         pygame.display.flip()
         clock.tick(FRAME_RATE)
 
 
 def blueMoon(chance):
+    """Returns true with a probability of `chance`.
+
+    e.g. if chance=0.1, the function has a 10% chance of returning True.
+    """
     return random.random() < chance
 
 
 def dist(a, b):
+    """Get the Euclidean distance between two points on the plane."""
     return math.hypot(a[0]-b[0], a[1]-b[1])
 
 
