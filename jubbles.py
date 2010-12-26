@@ -39,13 +39,24 @@ class Jubble(object):
             # Add some randomness to the walk
             self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
 
+
+        # If the distance from here to the goal is shorter than the distance the
+        # next move will take you, just move directly to the goal
+        distOfNextMove = math.hypot(self.speed * math.cos(self.angle), 
+                                    self.speed * math.sin(self.angle))
+        if self.has_goal and \
+           dist((self.x,self.y), (self.goal_x,self.goal_y)) <= distOfNextMove:
+            self.has_goal = False
+            self.x = self.goal_x
+            self.y = self.goal_y
+
         self.x += self.speed * math.cos(self.angle)
         self.y += self.speed * math.sin(self.angle)
 
         if self.has_goal and self.x == self.goal_x and self.y == self.goal_y:
             self.has_goal = False
 
-        
+
         print self.x, self.goal_x
 
         if self.x < HORIZONTAL_RANGE[0] or\
@@ -109,13 +120,8 @@ def blueMoon(chance):
     return random.random() < chance
 
 
+def dist(a, b):
+    return math.hypot(a[0]-b[0], a[1]-b[1])
+
+
 main()
-
-
-
-
-
-
-
-
-
