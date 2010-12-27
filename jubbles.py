@@ -13,6 +13,15 @@ FRAME_RATE = 60
 # Jubble details
 DEF_COLOUR = (255, 0, 0)
 DEF_SIZE = 10
+DEF_ANGLE = 0.0
+DEF_SPEED = 1.0
+
+MATURE_AGE = 300.0 # A jubble stops growing after it turns 300
+DEATH_AGE = 1000.0 # A jubble dies after it turns 1000
+
+BIRTH_SIZE = 5.0
+MATURE_SIZE = 15.0
+
 TURN_ANGLE = math.pi / 10
 
 # Misc details
@@ -32,12 +41,14 @@ class Jubble(object):
         self.x = random.randrange(*HORIZONTAL_RANGE)
         self.y = random.randrange(*VERTICAL_RANGE)
 
-        self.angle = 0.0
-        self.speed = 1.0
+        self.angle = DEF_ANGLE
+        self.speed = DEF_SPEED
 
         self.has_goal = False
         self.goal_x = 0
         self.goal_y = 0
+
+        self.age = 0
 
     def update(self):
         """Update the position and status of the jubble by taking into account
@@ -45,7 +56,7 @@ class Jubble(object):
         
         Right now, this is limited to checking if we have a goal set for this
         jubble (in which case we move toward that goal), randomly walking and
-        making sure we stay within the confines of the map.
+        making sure we stay within the confines of the map. Also update age.
 
         """
         # Head toward the goal if we have one. Otherwise, do a random walk
@@ -70,6 +81,8 @@ class Jubble(object):
 
         # Make sure you stay well on the map
         self.correct_offmap_drift()
+
+        self.age += 1
         
     def set_coord_goal(self, gx, gy):
         """Set an (x,y) goal for the jubble to head toward.
@@ -94,9 +107,19 @@ class Jubble(object):
         if self.y <= VERTICAL_RANGE[0]:    self.angle = ANGLE_DOWN
         if self.y >= VERTICAL_RANGE[1]:    self.angle = ANGLE_UP
 
+    def get_size(self):
+        """Get the size of the jubble (in px)."""
+        if self.age >= MATURE_AGE:
+            return MATURE_SIZE
+        else:
+            # Get the current age as a fraction of the maturity age, then find
+            # this position on the scale from BIRTH_SIZE to MATURE_SIZE
+            return self.age / MATURE_AGE * (MATURE_SIZE-BIRTH_SIZE) + BIRTH_SIZE
+
     def draw(self):
         """Draw the jubble sprite."""
-        pygame.draw.circle(self.screen, DEF_COLOUR, (self.x, self.y), DEF_SIZE)
+        pygame.draw.circle(self.screen, DEF_COLOUR, 
+                           (self.x, self.y), self.get_size())
 
 
 def main():
@@ -128,10 +151,7 @@ def main():
 
 
 def blueMoon(chance):
-    """Returns true with a probability of `chance`.
-
-    e.g. if chance=0.1, the function has a 10% chance of returning True.
-    """
+    """Returns true with a probability of `chance`."""
     return random.random() < chance
 
 
