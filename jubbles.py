@@ -15,13 +15,14 @@ DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 60.0
 
-MATURE_AGE = 600.0 # A jubble stops growing after it turns 300
-DEATH_AGE = 2000.0 # A jubble dies after it turns 1000
+MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
+DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
 
 BIRTH_SIZE = 5.0
 MATURE_SIZE = 15.0
 
-TURN_ANGLE = math.pi / 10
+TURN_ANGLE = math.pi / 7
+CHANCE_OF_TURN = 0.1
 
 DEATH_COLOUR = (0,0,0)
 
@@ -31,6 +32,8 @@ ANGLE_UP = math.pi * 1.5
 ANGLE_LEFT = math.pi
 ANGLE_DOWN = math.pi / 2
 
+NOSE_TO_BODY = 1.5
+NOSE_WIDTH = 2
 
 class Jubble(object):
 
@@ -77,7 +80,7 @@ class Jubble(object):
             # Head toward the goal if we have one. Otherwise, do a random walk
             if self.has_coord_goal:
                 self._handle_coord_goal()
-            else:
+            elif blueMoon(CHANCE_OF_TURN):
                 self._add_random_angle_shift()
 
             self._move_one_unit()
@@ -169,8 +172,16 @@ class Jubble(object):
 
     def draw(self):
         """Draw the jubble sprite."""
+        size = self.get_size()
         pygame.draw.circle(self.screen, self.colour, 
-                           self.get_pos(), self.get_size())
+                           self.get_pos(), size)
+
+        pygame.draw.line(self.screen, self.colour,
+                         (self.x, self.y),
+                         (self.x + NOSE_TO_BODY*size * math.cos(self.angle),
+                          self.y + NOSE_TO_BODY*size * math.sin(self.angle)),
+                         NOSE_WIDTH)
+                           
 
 
 def main():
