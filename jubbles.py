@@ -13,7 +13,8 @@ FRAME_RATE = 60
 # Jubble details
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
-DEF_DETECTION_RADIUS = 60.0
+DEF_DETECTION_RADIUS = 150.0
+DEF_DETECTION_SLICE = math.pi  # A jubble can see in a 180deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
 DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
@@ -89,7 +90,7 @@ class Jubble(object):
 
     def _handle_jubble_goal(self):
         """If the jubble we're aiming for is in our range, chase it."""
-        if self.can_detect(self.goal_jubble):
+        if self.can_detect_jubble(self.goal_jubble):
             self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
 
     def _handle_coord_goal(self):
@@ -98,6 +99,7 @@ class Jubble(object):
 
         if self.has_coord_goal and \
            dist((self.x,self.y), (self.goal_x,self.goal_y)) <= self.speed:
+            print 'Goal reached!'
             self.has_coord_goal = False
             self.x = self.goal_x
             self.y = self.goal_y
@@ -150,8 +152,24 @@ class Jubble(object):
         self.has_jubble_goal = True
         self.goal_jubble = gj
 
-    def can_detect(self, other):
-        return dist(self.get_pos(), other.get_pos()) <= self.detection_radius
+    def can_detect_jubble(self, other):
+        """Determine if this jubble is able to detect another jubble."""
+        return self._can_detect_coord(*other.get_pos())
+
+    def _can_detect_coord(self, ox, oy):
+        """Determine if this jubble is able to detect a specific point.
+
+        Factors in the distance of the point and whether the point falls within
+        the jubble's viewing field.
+
+        """
+        left_edge = self.angle - DEF_DETECTION_SLICE / 2
+        right_edge = self.angle + DEF_DETECTION_SLICE / 2
+        angle_of_self_to_point = to_polar(ox - self.x, oy - self.y)[0]
+
+        return dist(self.get_pos(), (ox,oy)) <= self.detection_radius and \
+            left_edge <= angle_of_self_to_point <= right_edge
+            
 
     def _correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
@@ -190,6 +208,8 @@ class Jubble(object):
             NOSE_WIDTH)
 
 
+### Main-loop
+
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
@@ -205,7 +225,7 @@ def main():
             j.draw()
             # Set jubbles on other jubbles
             for oj in jubbles:
-                if j is not oj and j.can_detect(oj):
+                if j is not oj and j.can_detect_jubble(oj):
                     j.set_jubble_goal(oj)
         
         for e in pygame.event.get():
@@ -227,9 +247,12 @@ def blueMoon(chance):
     """Returns true with a probability of `chance`."""
     return random.random() < chance
 
-
 def rand_colour():
+    """Generate a random RGB colour in tuple format."""
     return tuple(random.randrange(0, 256) for i in range(3))
+
+
+### Geometry stuff
 
 def dist(a, b):
     """Get the Euclidean distance between two points on the plane."""
@@ -242,5 +265,17 @@ def to_polar(x, y):
 def to_cartesian(angle, magnitude):
     """Converts (angle, magnitude) to (x, y)."""
     return (magnitude * math.cos(angle), magnitude * math.sin(angle))
+'''
+def point_left_of_line(origin, linepoint, querypoint):
+    """Determine if a query point is CCW to the line `origin`->`linePoint`."""
+    relative_linepoint = (linePoint[0] - origin[0], linePoint[1] - origin[1])
+    relative_querypoint = (queryPoint[0] - origin[0], queryPoint[1] - origin[1])
+
+    return cross_product(relative_linepoint, relative_querypoint) >= 0
+    
+def cross_product(a, b):
+    """Find the cross-product of two vectors."""
+    return a[0] * b[1] - b[0] * a[1]
+'''
 
 main()
