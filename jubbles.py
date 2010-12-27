@@ -39,22 +39,24 @@ class Jubble(object):
     def __init__(self, screen):
         self.screen = screen
 
+        # Randomly initialise its location
         self.x = random.randrange(*HORIZONTAL_RANGE)
         self.y = random.randrange(*VERTICAL_RANGE)
 
+        # Set its trajectory, speed and detection radius to the defaults
         self.angle = DEF_ANGLE
         self.speed = DEF_SPEED
+        self.detection_radius = DEF_DETECTION_RADIUS
+        self.age = 0
 
+        # It currently has no goals
         self.has_coord_goal = False
-        self.goal_x = self.goal_y = None
-
         self.has_jubble_goal = False
+        self.goal_x = self.goal_y = None
         self.goal_jubble = None
 
+        # Randomly initialise its colour
         self.colour = rand_colour()
-        self.detection_radius = DEF_DETECTION_RADIUS
-
-        self.age = 0
 
     def update(self):
         """Update the position and status of the jubble by taking into account
@@ -66,36 +68,49 @@ class Jubble(object):
 
         """
         # Head toward the jubble goal if the jubble goal is within the detection radius
-        if self.has_jubble_goal and \
-           dist(self.goal_jubble.get_pos(), self.get_pos()) <= \
-           self.detection_radius:
-            self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
+        if self.has_jubble_goal:
+            self._handle_jubble_goal()
         
         # Head toward the goal if we have one. Otherwise, do a random walk
         if self.has_coord_goal:
-            self.angle = math.atan2(self.goal_y-self.y, self.goal_x-self.x)
+            self._handle_coord_goal()
         else:
-            self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
+            self._add_random_angle_shift()
 
-        # If the distance from here to the goal is shorter than the distance the
-        # next move will take you, just move directly to the goal
-        distOfNextMove = math.hypot(self.speed * math.cos(self.angle), 
-                                    self.speed * math.sin(self.angle))
+        self._move_one_unit()
+        self._get_older()
+
+    def _handle_jubble_goal(self):
+        """If the jubble we're aiming for is in our range, chase it."""
+        if dist(self.goal_jubble.get_pos(), self.get_pos()) <= \
+           self.detection_radius:
+            self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
+
+    def _handle_coord_goal(self):
+        """Go toward the coord goal. If we've reached it, remove the goal."""
+        self.angle = math.atan2(self.goal_y-self.y, self.goal_x-self.x)
+
         if self.has_coord_goal and \
-           dist((self.x,self.y), (self.goal_x,self.goal_y)) <= distOfNextMove:
+           dist((self.x,self.y), (self.goal_x,self.goal_y)) <= self.speed:
             self.has_coord_goal = False
             self.x = self.goal_x
             self.y = self.goal_y
 
-        # Update the position of the jubble
+    def _add_random_angle_shift(self):
+        """Add some random noise to the current trajectory."""
+        self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
+        
+    def _move_one_unit(self):
+        """Update the position of the jubble. If we're heading off the map,
+        correct the angle."""
         self.x += self.speed * math.cos(self.angle)
         self.y += self.speed * math.sin(self.angle)
+        self._correct_offmap_drift()
 
-        # Make sure you stay well on the map
-        self.correct_offmap_drift()
-
+    def _get_older(self):
+        """Age the jubble by one frame's worth."""
         self.age += 1
-        
+
     def set_coord_goal(self, gx, gy):
         """Set an (x,y) goal for the jubble to head toward.
 
@@ -122,7 +137,7 @@ class Jubble(object):
         self.has_jubble_goal = True
         self.goal_jubble = gj
 
-    def correct_offmap_drift(self):
+    def _correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
         if self.x <= HORIZONTAL_RANGE[0]:  self.angle = ANGLE_RIGHT
         if self.x >= HORIZONTAL_RANGE[1]:  self.angle = ANGLE_LEFT
