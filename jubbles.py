@@ -32,8 +32,9 @@ ANGLE_UP = math.pi * 1.5
 ANGLE_LEFT = math.pi
 ANGLE_DOWN = math.pi / 2
 
-NOSE_TO_BODY = 1.5
-NOSE_WIDTH = 2
+NOSE_TO_BODY = 1.4
+NOSE_WIDTH = 3
+
 
 class Jubble(object):
 
@@ -88,13 +89,12 @@ class Jubble(object):
 
     def _handle_jubble_goal(self):
         """If the jubble we're aiming for is in our range, chase it."""
-        if dist(self.goal_jubble.get_pos(), self.get_pos()) <= \
-           self.detection_radius:
+        if self.can_detect(self.goal_jubble):
             self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
 
     def _handle_coord_goal(self):
         """Go toward the coord goal. If we've reached it, remove the goal."""
-        self.angle = math.atan2(self.goal_y-self.y, self.goal_x-self.x)
+        self.angle = to_polar(self.goal_x-self.x, self.goal_y-self.y)[0]
 
         if self.has_coord_goal and \
            dist((self.x,self.y), (self.goal_x,self.goal_y)) <= self.speed:
@@ -112,8 +112,8 @@ class Jubble(object):
         If we're heading off the map, correct the angle.
 
         """
-        self.x += self.speed * math.cos(self.angle)
-        self.y += self.speed * math.sin(self.angle)
+        change_x, change_y = to_cartesian(self.angle, self.speed)
+        self.x, self.y = self.x + change_x, self.y + change_y
         
         self._correct_offmap_drift()
 
@@ -150,6 +150,9 @@ class Jubble(object):
         self.has_jubble_goal = True
         self.goal_jubble = gj
 
+    def can_detect(self, other):
+        return dist(self.get_pos(), other.get_pos()) <= self.detection_radius
+
     def _correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
         if self.x <= HORIZONTAL_RANGE[0]:  self.angle = ANGLE_RIGHT
@@ -173,15 +176,18 @@ class Jubble(object):
     def draw(self):
         """Draw the jubble sprite."""
         size = self.get_size()
+
+        # Draw the body
         pygame.draw.circle(self.screen, self.colour, 
                            self.get_pos(), size)
 
-        pygame.draw.line(self.screen, self.colour,
-                         (self.x, self.y),
-                         (self.x + NOSE_TO_BODY*size * math.cos(self.angle),
-                          self.y + NOSE_TO_BODY*size * math.sin(self.angle)),
-                         NOSE_WIDTH)
-                           
+        # Draw the nose
+        nose_x, nose_y = to_cartesian(self.angle, size)
+        pygame.draw.line(
+            self.screen, self.colour,
+            (self.x, self.y),
+            (self.x + NOSE_TO_BODY*nose_x, self.y + NOSE_TO_BODY*nose_y),
+            NOSE_WIDTH)
 
 
 def main():
@@ -199,8 +205,7 @@ def main():
             j.draw()
             # Set jubbles on other jubbles
             for oj in jubbles:
-                if j is not oj and \
-                   dist(j.get_pos(), oj.get_pos()) <= j.detection_radius:
+                if j is not oj and j.can_detect(oj):
                     j.set_jubble_goal(oj)
         
         for e in pygame.event.get():
@@ -230,5 +235,12 @@ def dist(a, b):
     """Get the Euclidean distance between two points on the plane."""
     return math.hypot(a[0]-b[0], a[1]-b[1])
 
+def to_polar(x, y):
+    """Converts (x, y) to (angle, magnitude)."""
+    return (math.atan2(y, x), math.hypot(x, y))
+
+def to_cartesian(angle, magnitude):
+    """Converts (angle, magnitude) to (x, y)."""
+    return (magnitude * math.cos(angle), magnitude * math.sin(angle))
 
 main()
