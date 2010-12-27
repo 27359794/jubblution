@@ -11,8 +11,6 @@ BG_COLOUR = (255, 255, 255)
 FRAME_RATE = 60
 
 # Jubble details
-DEF_COLOUR = (255, 0, 0)
-DEF_SIZE = 10
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 60.0
@@ -24,6 +22,8 @@ BIRTH_SIZE = 5.0
 MATURE_SIZE = 15.0
 
 TURN_ANGLE = math.pi / 10
+
+DEATH_COLOUR = (0,0,0)
 
 # Misc details
 ANGLE_RIGHT = 0.0
@@ -48,6 +48,7 @@ class Jubble(object):
         self.speed = DEF_SPEED
         self.detection_radius = DEF_DETECTION_RADIUS
         self.age = 0
+        self.isAlive = True
 
         # It currently has no goals
         self.has_coord_goal = False
@@ -67,18 +68,20 @@ class Jubble(object):
         making sure we stay within the confines of the map. Also update age.
 
         """
-        # Head toward the jubble goal if the jubble goal is within the detection radius
-        if self.has_jubble_goal:
-            self._handle_jubble_goal()
+        if self.isAlive:
+            # Head toward the jubble goal if the jubble goal is within the
+            # detection radius
+            if self.has_jubble_goal:
+                self._handle_jubble_goal()
         
-        # Head toward the goal if we have one. Otherwise, do a random walk
-        if self.has_coord_goal:
-            self._handle_coord_goal()
-        else:
-            self._add_random_angle_shift()
+            # Head toward the goal if we have one. Otherwise, do a random walk
+            if self.has_coord_goal:
+                self._handle_coord_goal()
+            else:
+                self._add_random_angle_shift()
 
-        self._move_one_unit()
-        self._get_older()
+            self._move_one_unit()
+            self._get_older()
 
     def _handle_jubble_goal(self):
         """If the jubble we're aiming for is in our range, chase it."""
@@ -101,15 +104,22 @@ class Jubble(object):
         self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
         
     def _move_one_unit(self):
-        """Update the position of the jubble. If we're heading off the map,
-        correct the angle."""
+        """Update the position of the jubble.
+
+        If we're heading off the map, correct the angle.
+
+        """
         self.x += self.speed * math.cos(self.angle)
         self.y += self.speed * math.sin(self.angle)
+        
         self._correct_offmap_drift()
 
     def _get_older(self):
         """Age the jubble by one frame's worth."""
         self.age += 1
+        if self.age >= DEATH_AGE:
+            self.isAlive = False
+            self.colour = DEATH_COLOUR
 
     def set_coord_goal(self, gx, gy):
         """Set an (x,y) goal for the jubble to head toward.
