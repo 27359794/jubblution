@@ -15,9 +15,10 @@ DEF_COLOUR = (255, 0, 0)
 DEF_SIZE = 10
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
+DEF_DETECTION_RADIUS = 60.0
 
-MATURE_AGE = 300.0 # A jubble stops growing after it turns 300
-DEATH_AGE = 1000.0 # A jubble dies after it turns 1000
+MATURE_AGE = 600.0 # A jubble stops growing after it turns 300
+DEATH_AGE = 2000.0 # A jubble dies after it turns 1000
 
 BIRTH_SIZE = 5.0
 MATURE_SIZE = 15.0
@@ -44,9 +45,14 @@ class Jubble(object):
         self.angle = DEF_ANGLE
         self.speed = DEF_SPEED
 
-        self.has_goal = False
-        self.goal_x = 0
-        self.goal_y = 0
+        self.has_coord_goal = False
+        self.goal_x = self.goal_y = None
+
+        self.has_jubble_goal = False
+        self.goal_jubble = None
+
+        self.colour = rand_colour()
+        self.detection_radius = DEF_DETECTION_RADIUS
 
         self.age = 0
 
@@ -59,8 +65,14 @@ class Jubble(object):
         making sure we stay within the confines of the map. Also update age.
 
         """
+        # Head toward the jubble goal if the jubble goal is within the detection radius
+        if self.has_jubble_goal and \
+           dist(self.goal_jubble.get_pos(), self.get_pos()) <= \
+           self.detection_radius:
+            self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
+        
         # Head toward the goal if we have one. Otherwise, do a random walk
-        if self.has_goal:
+        if self.has_coord_goal:
             self.angle = math.atan2(self.goal_y-self.y, self.goal_x-self.x)
         else:
             self.angle += random.uniform(-TURN_ANGLE, TURN_ANGLE)
@@ -69,9 +81,9 @@ class Jubble(object):
         # next move will take you, just move directly to the goal
         distOfNextMove = math.hypot(self.speed * math.cos(self.angle), 
                                     self.speed * math.sin(self.angle))
-        if self.has_goal and \
+        if self.has_coord_goal and \
            dist((self.x,self.y), (self.goal_x,self.goal_y)) <= distOfNextMove:
-            self.has_goal = False
+            self.has_coord_goal = False
             self.x = self.goal_x
             self.y = self.goal_y
 
@@ -94,11 +106,21 @@ class Jubble(object):
         """
         if (gx >= HORIZONTAL_RANGE[0] and gx <= HORIZONTAL_RANGE[1]) and\
            (gy >= VERTICAL_RANGE[0] and gy <= VERTICAL_RANGE[1]):
-            self.has_goal = True
+            self.has_coord_goal = True
             self.goal_x = gx
             self.goal_y = gy
         else:
             print 'Invalid goal issued!'
+
+    def set_jubble_goal(self, gj):
+        """Set another jubble as a goal for this jubble to head toward.
+
+        This is essentially a coord goal, except it will update the coordinates
+        to match whatever the current position of the other jubble is.
+
+        """
+        self.has_jubble_goal = True
+        self.goal_jubble = gj
 
     def correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
@@ -116,25 +138,34 @@ class Jubble(object):
             # this position on the scale from BIRTH_SIZE to MATURE_SIZE
             return self.age / MATURE_AGE * (MATURE_SIZE-BIRTH_SIZE) + BIRTH_SIZE
 
+    def get_pos(self):
+        """Get the (x,y) of this jubble."""
+        return (self.x, self.y)
+
     def draw(self):
         """Draw the jubble sprite."""
-        pygame.draw.circle(self.screen, DEF_COLOUR, 
-                           (self.x, self.y), self.get_size())
+        pygame.draw.circle(self.screen, self.colour, 
+                           self.get_pos(), self.get_size())
 
 
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
 
-    jubble1 = Jubble(screen)
-
+    jubbles = [Jubble(screen) for i in range(3)]
     running = True
 
     while running:
         # Clear the screen and update jubbles
         screen.fill(BG_COLOUR)
-        jubble1.update()
-        jubble1.draw()
+        for j in jubbles:
+            j.update()
+            j.draw()
+            # Set jubbles on other jubbles
+            for oj in jubbles:
+                if j is not oj and \
+                   dist(j.get_pos(), oj.get_pos()) <= j.detection_radius:
+                    j.set_jubble_goal(oj)
         
         for e in pygame.event.get():
             # If we receive a quit event (window close), stop running
@@ -143,7 +174,8 @@ def main():
             # If we receive a mouse click, set a coordinate goal for our jubble
             # at the position of the click
             elif e.type == pygame.MOUSEBUTTONDOWN:
-                jubble1.set_coord_goal(*e.pos)
+                for j in jubbles:
+                    j.set_coord_goal(*e.pos)
                 
         # Refresh the display
         pygame.display.flip()
@@ -154,6 +186,9 @@ def blueMoon(chance):
     """Returns true with a probability of `chance`."""
     return random.random() < chance
 
+
+def rand_colour():
+    return tuple(random.randrange(0, 256) for i in range(3))
 
 def dist(a, b):
     """Get the Euclidean distance between two points on the plane."""
