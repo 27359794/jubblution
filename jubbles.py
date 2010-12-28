@@ -14,7 +14,7 @@ FRAME_RATE = 60
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 150.0
-DEF_DETECTION_SLICE = math.pi*0.8  # A jubble can see in a 144deg angle ahead
+DEF_DETECTION_SLICE = math.pi*0.5  # A jubble can see in a 144deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
 DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
@@ -171,7 +171,8 @@ class Jubble(object):
 
     def colliding_with_jubble(self, other):
         """Determine whether this jubble is currently colliding with another."""
-        return circles_are_touching(self.get_pos(), other.get_pos(),
+        return self.isAlive and other.isAlive and \
+               circles_are_touching(self.get_pos(), other.get_pos(),
                                     self.get_radius(), other.get_radius())
 
     def kill(self):
@@ -202,6 +203,22 @@ class Jubble(object):
         """Draw the jubble sprite."""
         size = self.get_radius()
 
+        # Draw the viewing angle (DEBUGGING ONLY)
+        left_x, left_y = to_cartesian(self.angle - DEF_DETECTION_SLICE / 2, 100)
+        right_x, right_y = to_cartesian(self.angle + DEF_DETECTION_SLICE / 2, 100)
+
+        pygame.draw.line(
+            self.screen, (200, 200, 200),
+            (self.x, self.y),
+            (self.x + left_x, self.y + left_y),
+            2)
+        pygame.draw.line(
+            self.screen, (200, 200, 200),
+            (self.x, self.y),
+            (self.x + right_x, self.y + right_y),
+            2)
+
+
         # Draw the body
         pygame.draw.circle(self.screen, self.colour, 
                            self.get_pos(), size)
@@ -213,6 +230,7 @@ class Jubble(object):
             (self.x, self.y),
             (self.x + NOSE_TO_BODY*nose_x, self.y + NOSE_TO_BODY*nose_y),
             NOSE_WIDTH)
+
 
 
 ### Main-loop
@@ -238,7 +256,6 @@ def main():
 
                     if j.colliding_with_jubble(oj):
                         j.kill()
-                        oj.kill()
         
         for e in pygame.event.get():
             # If we receive a quit event (window close), stop running
