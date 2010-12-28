@@ -14,7 +14,7 @@ FRAME_RATE = 60
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 150.0
-DEF_DETECTION_SLICE = math.pi  # A jubble can see in a 180deg angle ahead
+DEF_DETECTION_SLICE = math.pi*0.8  # A jubble can see in a 144deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
 DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
@@ -123,8 +123,7 @@ class Jubble(object):
         """Age the jubble by one frame's worth."""
         self.age += 1
         if self.age >= DEATH_AGE:
-            self.isAlive = False
-            self.colour = DEATH_COLOUR
+            self.kill()
 
     def set_coord_goal(self, gx, gy):
         """Set an (x,y) goal for the jubble to head toward.
@@ -168,8 +167,16 @@ class Jubble(object):
         angle_of_self_to_point = to_polar(ox - self.x, oy - self.y)[0]
 
         return dist(self.get_pos(), (ox,oy)) <= self.detection_radius and \
-            left_edge <= angle_of_self_to_point <= right_edge
-            
+               left_edge <= angle_of_self_to_point <= right_edge
+
+    def colliding_with_jubble(self, other):
+        """Determine whether this jubble is currently colliding with another."""
+        return circles_are_touching(self.get_pos(), other.get_pos(),
+                                    self.get_radius(), other.get_radius())
+
+    def kill(self):
+        self.isAlive = False
+        self.colour = DEATH_COLOUR
 
     def _correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
@@ -178,7 +185,7 @@ class Jubble(object):
         if self.y <= VERTICAL_RANGE[0]:    self.angle = ANGLE_DOWN
         if self.y >= VERTICAL_RANGE[1]:    self.angle = ANGLE_UP
 
-    def get_size(self):
+    def get_radius(self):
         """Get the size of the jubble (in px)."""
         if self.age >= MATURE_AGE:
             return MATURE_SIZE
@@ -193,7 +200,7 @@ class Jubble(object):
 
     def draw(self):
         """Draw the jubble sprite."""
-        size = self.get_size()
+        size = self.get_radius()
 
         # Draw the body
         pygame.draw.circle(self.screen, self.colour, 
@@ -214,7 +221,7 @@ def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
 
-    jubbles = [Jubble(screen) for i in range(3)]
+    jubbles = [Jubble(screen) for i in range(20)]
     running = True
 
     while running:
@@ -225,8 +232,13 @@ def main():
             j.draw()
             # Set jubbles on other jubbles
             for oj in jubbles:
-                if j is not oj and j.can_detect_jubble(oj):
-                    j.set_jubble_goal(oj)
+                if j.isAlive and j is not oj:
+                    if j.can_detect_jubble(oj):
+                        j.set_jubble_goal(oj)
+
+                    if j.colliding_with_jubble(oj):
+                        j.kill()
+                        oj.kill()
         
         for e in pygame.event.get():
             # If we receive a quit event (window close), stop running
@@ -265,6 +277,16 @@ def to_polar(x, y):
 def to_cartesian(angle, magnitude):
     """Converts (angle, magnitude) to (x, y)."""
     return (magnitude * math.cos(angle), magnitude * math.sin(angle))
+
+def circles_are_touching(centre1, centre2, radius1, radius2):
+    """Determine if two circles of different radii intersect.
+
+    Two circles intersect if the Euclidean distance between their origins is
+    less than or equal to the sum of their radii.
+
+    """
+    return dist(centre1, centre2) <= radius1 + radius2
+
 '''
 def point_left_of_line(origin, linepoint, querypoint):
     """Determine if a query point is CCW to the line `origin`->`linePoint`."""
