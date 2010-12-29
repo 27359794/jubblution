@@ -182,6 +182,18 @@ class Jubble(object):
         """
         return self.age >= other.age
 
+    def will_win_against_jubble(self, other):
+        """Determine whether this jubble will win a fight against another
+        jubble.
+
+        Currently, the older jubble will always win.
+
+        Note that unlike the 'will fight with jubble' function, this one can be
+        non-deterministic as it will only happen once between two jubbles.
+
+        """
+        return self.age >= other.age
+
     def can_chase_jubble(self, other):
         """Decide whether another jubble can be chased.
 
@@ -272,14 +284,13 @@ class Jubble(object):
             NOSE_WIDTH)
 
 
-
 ### Main-loop
 
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
 
-    jubbles = [Jubble(screen) for i in range(2)]
+    jubbles = [Jubble(screen)]
     running = True
 
     while running:
@@ -296,10 +307,12 @@ def main():
                         print 'set goal!', id(j), len(jubbles)
                         j.set_jubble_goal(oj)
 
-
                     if j.colliding_with_jubble(oj):
-                        oj.kill()
-        
+                        if j.will_win_against_jubble(oj):
+                            oj.kill()
+                        else:
+                            j.kill()
+
         for e in pygame.event.get():
             # If we receive a quit event (window close), stop running
             if e.type == pygame.QUIT:
@@ -313,6 +326,8 @@ def main():
         # Refresh the display
         pygame.display.flip()
         clock.tick(FRAME_RATE)
+        if len(jubbles) == 1:
+            jubbles.append(Jubble(screen))
 
 
 def blueMoon(chance):
