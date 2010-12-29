@@ -48,6 +48,9 @@ class Jubble(object):
         self.x = random.randrange(*HORIZONTAL_RANGE)
         self.y = random.randrange(*VERTICAL_RANGE)
 
+        # Randomly initialise its colour
+        self.colour = rand_colour()
+
         # Set its trajectory, speed and detection radius to the defaults
         self.angle = DEF_ANGLE
         self.speed = DEF_SPEED
@@ -61,17 +64,10 @@ class Jubble(object):
         self.goal_x = self.goal_y = None
         self.goal_jubble = None
 
-        # Randomly initialise its colour
-        self.colour = rand_colour()
-
     def update(self):
         """Update the position and status of the jubble by taking into account
         all relevant details.
         
-        Right now, this is limited to checking if we have a goal set for this
-        jubble (in which case we move toward that goal), randomly walking and
-        making sure we stay within the confines of the map. Also update age.
-
         """
         if self.isAlive:
             # Head toward the jubble goal if the jubble goal is within the
@@ -92,7 +88,7 @@ class Jubble(object):
         """If the jubble we're aiming for is alive and in range, chase it.
 
         If the target is dead, remove the goal.
-        Otherwise, if we can detect it, set it as our coordinate goal.
+        Otherwise, if we can chase it, set it as our coordinate goal.
 
         Assumes we have a jubble goal already.
 
@@ -109,6 +105,7 @@ class Jubble(object):
         """Go toward the coord goal. If we've reached it, remove the goal.
 
         Assumes we have a coord goal already.
+
         """
         assert self.has_coord_goal
 
@@ -171,9 +168,28 @@ class Jubble(object):
         """Determine if this jubble is able to detect another jubble."""
         return self._can_detect_coord(*other.get_pos())
 
+    def will_fight_with_jubble(self, other):
+        """Determine whether this jubble is willing to fight with another.
+
+        Currently, a jubble will only fight with jubbles younger or the same age
+        as this one. Later it will depend on courage, our size, the other
+        jubble's size, etc.
+
+        Note that this function MUST BE DETERMINISTIC. It will be evaluated
+        every frame, so if a jubble sees an opponent repeatedly in several
+        consecutive frames it should make the same choice every time.
+
+        """
+        return self.age >= other.age
+
     def can_chase_jubble(self, other):
-        """Once a jubble has been detected, it does not have to be in this
-        jubble's field of vision to be chased."""
+        """Decide whether another jubble can be chased.
+
+        Once a jubble has been detected, it does not have to be in this jubble's
+        field of vision to be chased. It merely has to be within the dist
+        bounds.
+
+        """
         return self._coord_in_range(*other.get_pos())
 
     def _can_detect_coord(self, ox, oy):
@@ -191,6 +207,7 @@ class Jubble(object):
                left_edge <= angle_of_self_to_point <= right_edge
 
     def _coord_in_range(self, ox, oy):
+        """Determine whether a coordinate is in the dist range of the jubble."""
         return dist(self.get_pos(), (ox,oy)) <= self.detection_radius
 
     def colliding_with_jubble(self, other):
@@ -200,6 +217,7 @@ class Jubble(object):
                                     self.get_radius(), other.get_radius())
 
     def kill(self):
+        """Kill this jubble and set all relevant attributes to reflect this."""
         self.isAlive = False
         self.colour = DEATH_COLOUR
 
@@ -211,7 +229,7 @@ class Jubble(object):
         if self.y >= VERTICAL_RANGE[1]:    self.angle = ANGLE_UP
 
     def get_radius(self):
-        """Get the size of the jubble (in px)."""
+        """Get the size of the jubble's radius (in px)."""
         if self.age >= MATURE_AGE:
             return MATURE_SIZE
         else:
@@ -220,7 +238,7 @@ class Jubble(object):
             return self.age / MATURE_AGE * (MATURE_SIZE-BIRTH_SIZE) + BIRTH_SIZE
 
     def get_pos(self):
-        """Get the (x,y) of this jubble."""
+        """Get the (x,y) position of this jubble."""
         return (self.x, self.y)
 
     def draw(self):
@@ -230,7 +248,6 @@ class Jubble(object):
         # Draw the viewing angle (DEBUGGING ONLY)
         left_x, left_y = to_cartesian(self.angle - DEF_DETECTION_SLICE / 2, 100)
         right_x, right_y = to_cartesian(self.angle + DEF_DETECTION_SLICE / 2, 100)
-
         pygame.draw.line(
             self.screen, (200, 200, 200),
             (self.x, self.y),
@@ -241,7 +258,6 @@ class Jubble(object):
             (self.x, self.y),
             (self.x + right_x, self.y + right_y),
             2)
-
 
         # Draw the body
         pygame.draw.circle(self.screen, self.colour, 
@@ -276,8 +292,8 @@ def main():
             # Set jubbles on other jubbles
             for oj in jubbles:
                 if j.isAlive and oj.isAlive and j is not oj:
-                    if j.can_detect_jubble(oj):
-                        #print 'set goal!', id(j), len(jubbles)
+                    if j.can_detect_jubble(oj) and j.will_fight_with_jubble(oj):
+                        print 'set goal!', id(j), len(jubbles)
                         j.set_jubble_goal(oj)
 
 
