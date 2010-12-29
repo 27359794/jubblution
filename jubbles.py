@@ -14,7 +14,7 @@ FRAME_RATE = 60
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 150.0
-DEF_DETECTION_SLICE = math.pi*0.5  # A jubble can see in a 144deg angle ahead
+DEF_DETECTION_SLICE = math.pi*0.8  # A jubble can see in a 144deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
 DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
@@ -89,17 +89,33 @@ class Jubble(object):
             self._get_older()
 
     def _handle_jubble_goal(self):
-        """If the jubble we're aiming for is in our range, chase it."""
-        if self.can_detect_jubble(self.goal_jubble):
+        """If the jubble we're aiming for is alive and in range, chase it.
+
+        If the target is dead, remove the goal.
+        Otherwise, if we can detect it, set it as our coordinate goal.
+
+        Assumes we have a jubble goal already.
+
+        """
+        assert self.has_jubble_goal
+
+        if not self.goal_jubble.isAlive:
+            self.has_jubble_goal = False
+
+        elif self.can_chase_jubble(self.goal_jubble):
             self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
 
     def _handle_coord_goal(self):
-        """Go toward the coord goal. If we've reached it, remove the goal."""
+        """Go toward the coord goal. If we've reached it, remove the goal.
+
+        Assumes we have a coord goal already.
+        """
+        assert self.has_coord_goal
+
         self.angle = to_polar(self.goal_x-self.x, self.goal_y-self.y)[0]
 
         if self.has_coord_goal and \
            dist((self.x,self.y), (self.goal_x,self.goal_y)) <= self.speed:
-            print 'Goal reached!'
             self.has_coord_goal = False
             self.x = self.goal_x
             self.y = self.goal_y
@@ -155,6 +171,11 @@ class Jubble(object):
         """Determine if this jubble is able to detect another jubble."""
         return self._can_detect_coord(*other.get_pos())
 
+    def can_chase_jubble(self, other):
+        """Once a jubble has been detected, it does not have to be in this
+        jubble's field of vision to be chased."""
+        return self._coord_in_range(*other.get_pos())
+
     def _can_detect_coord(self, ox, oy):
         """Determine if this jubble is able to detect a specific point.
 
@@ -166,8 +187,11 @@ class Jubble(object):
         right_edge = self.angle + DEF_DETECTION_SLICE / 2
         angle_of_self_to_point = to_polar(ox - self.x, oy - self.y)[0]
 
-        return dist(self.get_pos(), (ox,oy)) <= self.detection_radius and \
+        return self._coord_in_range(ox, oy) and \
                left_edge <= angle_of_self_to_point <= right_edge
+
+    def _coord_in_range(self, ox, oy):
+        return dist(self.get_pos(), (ox,oy)) <= self.detection_radius
 
     def colliding_with_jubble(self, other):
         """Determine whether this jubble is currently colliding with another."""
@@ -239,7 +263,7 @@ def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
     clock = pygame.time.Clock()
 
-    jubbles = [Jubble(screen) for i in range(20)]
+    jubbles = [Jubble(screen) for i in range(2)]
     running = True
 
     while running:
@@ -248,14 +272,17 @@ def main():
         for j in jubbles:
             j.update()
             j.draw()
+
             # Set jubbles on other jubbles
             for oj in jubbles:
-                if j.isAlive and j is not oj:
+                if j.isAlive and oj.isAlive and j is not oj:
                     if j.can_detect_jubble(oj):
+                        #print 'set goal!', id(j), len(jubbles)
                         j.set_jubble_goal(oj)
 
+
                     if j.colliding_with_jubble(oj):
-                        j.kill()
+                        oj.kill()
         
         for e in pygame.event.get():
             # If we receive a quit event (window close), stop running
