@@ -151,8 +151,8 @@ class Jubble(object):
             self.has_coord_goal = True
             self.goal_x = gx
             self.goal_y = gy
-        else:
-            print 'Invalid goal issued!'
+#        else:
+#            print 'Invalid goal issued!'
 
     def set_jubble_goal(self, gj):
         """Set another jubble as a goal for this jubble to head toward.
@@ -288,6 +288,7 @@ class Jubble(object):
 
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
+    pygame.display.set_caption("Jubblution")
     clock = pygame.time.Clock()
 
     jubbles = [Jubble(screen)]
@@ -304,13 +305,14 @@ def main():
             for oj in jubbles:
                 if j.isAlive and oj.isAlive and j is not oj:
                     if j.can_detect_jubble(oj) and j.will_fight_with_jubble(oj):
-                        print 'set goal!', id(j), len(jubbles)
                         j.set_jubble_goal(oj)
 
                     if j.colliding_with_jubble(oj):
                         if j.will_win_against_jubble(oj):
+                            print 'Jubble of age', j.age, 'has defeated jubble of age', oj.age
                             oj.kill()
                         else:
+                            print 'Jubble of age', oj.age, 'has defeated jubble of age', j.age
                             j.kill()
 
         for e in pygame.event.get():
@@ -326,7 +328,9 @@ def main():
         # Refresh the display
         pygame.display.flip()
         clock.tick(FRAME_RATE)
-        if len(jubbles) == 1:
+
+        # Add a new jubble for the first 10 frames
+        if len(jubbles) < 10:
             jubbles.append(Jubble(screen))
 
 
