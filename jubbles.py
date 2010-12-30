@@ -14,7 +14,7 @@ FRAME_RATE = 60
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 150.0
-DEF_DETECTION_SLICE = math.pi*0.8  # A jubble can see in a 144deg angle ahead
+DEF_DETECTION_SLICE = math.pi/2  # A jubble can see in a 90deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
 DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
@@ -25,7 +25,8 @@ MATURE_SIZE = 15.0
 TURN_ANGLE = math.pi / 7
 CHANCE_OF_TURN = 0.1
 
-DEATH_COLOUR = (0,0,0)
+DEATH_COLOUR = (220, 220, 220)
+VIEWING_ANGLE_LINE_COLOUR = (200, 200, 200)
 
 # Misc details
 ANGLE_RIGHT = 0.0
@@ -151,8 +152,6 @@ class Jubble(object):
             self.has_coord_goal = True
             self.goal_x = gx
             self.goal_y = gy
-#        else:
-#            print 'Invalid goal issued!'
 
     def set_jubble_goal(self, gj):
         """Set another jubble as a goal for this jubble to head toward.
@@ -260,36 +259,47 @@ class Jubble(object):
         overwritten with a single colour.
 
         """
-        size = self.get_radius()
+        if colour is not None:
+            self._draw_viewing_angle(colour)
+            self._draw_body(colour)
+            self._draw_nose(colour)
+        else:
+            self._draw_viewing_angle(VIEWING_ANGLE_LINE_COLOUR)
+            self._draw_body(self.colour)
+            self._draw_nose(self.colour)
 
-        # Draw the viewing angle (DEBUGGING ONLY)
-        left_x, left_y = to_cartesian(self.angle - DEF_DETECTION_SLICE / 2, 100)
-        right_x, right_y = to_cartesian(self.angle + DEF_DETECTION_SLICE / 2, 100)
-        pygame.draw.line(
-            self.screen, colour if colour is not None else (200, 200, 200),
-            (self.x, self.y),
-            (self.x + left_x, self.y + left_y),
-            2)
-        pygame.draw.line(
-            self.screen, colour if colour is not None else (200, 200, 200),
-            (self.x, self.y),
-            (self.x + right_x, self.y + right_y),
-            2)
-
-        # Draw the body
+    def _draw_body(self, colour):
+        """Draw the jubble's body."""
         pygame.draw.circle(
-            self.screen, colour if colour is not None else self.colour,
-            self.get_pos(), size)
+            self.screen, colour,
+            self.get_pos(), self.get_radius())
 
-        # Draw the nose
-        nose_x, nose_y = to_cartesian(self.angle, size)
+    def _draw_nose(self, colour):
+        """Draw the jubble's 'nose'"""
+        nose_x, nose_y = to_cartesian(self.angle, self.get_radius())
         pygame.draw.line(
-            self.screen, colour if colour is not None else self.colour,
+            self.screen, colour,
             (self.x, self.y),
             (self.x + NOSE_TO_BODY*nose_x, self.y + NOSE_TO_BODY*nose_y),
             NOSE_WIDTH)
 
+    def _draw_viewing_angle(self, colour):
+        """Draw the lines representing the jubble's viewing angle."""
+        left_x, left_y = to_cartesian(self.angle - DEF_DETECTION_SLICE / 2, 100)
+        right_x, right_y = to_cartesian(self.angle + DEF_DETECTION_SLICE / 2, 100)
+        pygame.draw.line(
+            self.screen, colour,
+            (self.x, self.y),
+            (self.x + left_x, self.y + left_y),
+            2)
+        pygame.draw.line(
+            self.screen, colour,
+            (self.x, self.y),
+            (self.x + right_x, self.y + right_y),
+            2)
+
     def erase(self):
+        """Fill in the jubble's current position with the background colour."""
         self.draw(colour=BG_COLOUR)
 
 
