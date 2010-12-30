@@ -252,17 +252,19 @@ class Jubble(object):
         """Get the (x,y) position of this jubble."""
         return (self.x, self.y)
 
-    def draw(self, colour=None):
+    def draw(self, overridingColour=None):
         """Draw the jubble sprite.
         
         The `colour` keyword argument allows for all the jubble's colours to be
         overwritten with a single colour.
 
         """
-        if colour is not None:
-            self._draw_viewing_angle(colour)
-            self._draw_body(colour)
-            self._draw_nose(colour)
+        if overridingColour is not None:
+            # A colour has been specified that overrides the defaults.
+            # Use that colour for everything, instead of the defaults
+            self._draw_viewing_angle(overridingColour)
+            self._draw_body(overridingColour)
+            self._draw_nose(overridingColour)
         else:
             self._draw_viewing_angle(VIEWING_ANGLE_LINE_COLOUR)
             self._draw_body(self.colour)
@@ -277,6 +279,7 @@ class Jubble(object):
     def _draw_nose(self, colour):
         """Draw the jubble's 'nose'"""
         nose_x, nose_y = to_cartesian(self.angle, self.get_radius())
+
         pygame.draw.line(
             self.screen, colour,
             (self.x, self.y),
@@ -287,11 +290,15 @@ class Jubble(object):
         """Draw the lines representing the jubble's viewing angle."""
         left_x, left_y = to_cartesian(self.angle - DEF_DETECTION_SLICE / 2, 100)
         right_x, right_y = to_cartesian(self.angle + DEF_DETECTION_SLICE / 2, 100)
+
+        # Draw the left line of the viewing angle
         pygame.draw.line(
             self.screen, colour,
             (self.x, self.y),
             (self.x + left_x, self.y + left_y),
             2)
+
+        # Draw the right line of the viewing angle
         pygame.draw.line(
             self.screen, colour,
             (self.x, self.y),
@@ -300,10 +307,8 @@ class Jubble(object):
 
     def erase(self):
         """Fill in the jubble's current position with the background colour."""
-        self.draw(colour=BG_COLOUR)
+        self.draw(overridingColour=BG_COLOUR)
 
-
-### Main-loop
 
 def main():
     screen = pygame.display.set_mode(SCREEN_SIZE)
@@ -316,25 +321,11 @@ def main():
     running = True
 
     while running:
-        # Update jubbles and redraw them
-        for j in jubbles:
-            j.erase()
-            j.update()
-            j.draw()
-
-            # Set jubbles on other jubbles
-            for oj in jubbles:
-                if j.isAlive and oj.isAlive and j is not oj:
-                    if j.can_detect_jubble(oj) and j.will_fight_with_jubble(oj):
-                        j.set_jubble_goal(oj)
-
-                    if j.colliding_with_jubble(oj):
-                        if j.will_win_against_jubble(oj):
-                            print 'Jubble of age', j.age, 'has defeated jubble of age', oj.age
-                            oj.kill()
-                        else:
-                            print 'Jubble of age', oj.age, 'has defeated jubble of age', j.age
-                            j.kill()
+        updateJubbles(jubbles)
+                
+        # Refresh the display
+        pygame.display.flip()
+        clock.tick(FRAME_RATE)
 
         for e in pygame.event.get():
             # If we receive a quit event (window close), stop running
@@ -345,14 +336,30 @@ def main():
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 for j in jubbles:
                     j.set_coord_goal(*e.pos)
-                
-        # Refresh the display
-        pygame.display.flip()
-        clock.tick(FRAME_RATE)
 
-        # Add a new jubble for the first 10 frames
-        if len([1 for j in jubbles if j.isAlive]) < 10:
-            jubbles.append(Jubble(screen))
+            # Add a new jubble for the first 10 frames
+            if len([1 for j in jubbles if j.isAlive]) < 10:
+                jubbles.append(Jubble(screen))
+
+
+def updateJubbles(jubbles):
+    # Update jubbles and redraw them
+    for j in jubbles:
+        j.erase()
+        j.update()
+        j.draw()
+
+            # Set jubbles on other jubbles
+        for oj in jubbles:
+            if j.isAlive and oj.isAlive and j is not oj:
+                if j.can_detect_jubble(oj) and j.will_fight_with_jubble(oj):
+                    j.set_jubble_goal(oj)
+
+                    if j.colliding_with_jubble(oj):
+                        if j.will_win_against_jubble(oj):
+                            oj.kill()
+                        else:
+                            j.kill()
 
 
 def blueMoon(chance):
