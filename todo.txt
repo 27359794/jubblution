@@ -6,11 +6,11 @@ Make jubbles not go through other jubbles.
 Make it so jubble 'a' can detect jubble 'b' if *any* part of b is within a's
 scope, not just b's centre.
 
-Right now, the updating system is retarded. Each jubble is referring to other
-jubbles WHILE THE OTHER JUBBLES ARE UPDATING AT THE SAME TIME. It's all
+DONE: Right now, the updating system is retarded. Each jubble is referring to
+other jubbles WHILE THE OTHER JUBBLES ARE UPDATING AT THE SAME TIME. It's all
 convoluted. I need to establish a more iterative, 'layer-based' system where you
 have `old_jubbles` and `new_jubbles`, and new_jubbles is built by iterating over
-all the old_jubbles.
+all the old_jubbles. This also lets you get rid of h4x for red goal lines.
 
 Find how you do layers in pygame and do them. Put dead people on the bottom
 layer, live jubbles on the top layer, etc.

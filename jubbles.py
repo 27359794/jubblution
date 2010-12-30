@@ -1,9 +1,7 @@
-# TODO: currently, a jubble can only detect jubbles whose *centres* are within
-# the first jubble's viewing range. fix this!
-
 import pygame
 import random
 import math
+import copy
 
 # Screen details
 SCREEN_SIZE = (640, 480)
@@ -17,16 +15,15 @@ FRAME_RATE = 60
 DEF_ANGLE = 0.0
 DEF_SPEED = 1.0
 DEF_DETECTION_RADIUS = 150.0
-DEF_DETECTION_SLICE = math.pi/2  # A jubble can see in a 90deg angle ahead
+DEF_DETECTION_SLICE = math.pi / 2.0  # A jubble can see in a 90deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
-############ DEBUG
-DEATH_AGE = 20000.0  # A jubble dies after it turns 1000
+DEATH_AGE = 3000.0  # A jubble dies after it turns 3000
 
 BIRTH_SIZE = 5.0
 MATURE_SIZE = 15.0
 
-TURN_ANGLE = math.pi / 7
+TURN_ANGLE = math.pi / 7.0
 CHANCE_OF_TURN = 0.1
 
 DEATH_COLOUR = (220, 220, 220)
@@ -49,6 +46,9 @@ class Jubble(object):
     def __init__(self, screen):
         self.screen = screen
 
+        # Generate a random identifier for this jubble
+        self.id = rand_id()
+
         # Randomly initialise its location
         self.x = random.randrange(*HORIZONTAL_RANGE)
         self.y = random.randrange(*VERTICAL_RANGE)
@@ -61,7 +61,7 @@ class Jubble(object):
         self.speed = DEF_SPEED
         self.detection_radius = DEF_DETECTION_RADIUS
         self.age = 0
-        self.isAlive = True
+        self.is_alive = True
 
         # It currently has no goals
         self.has_coord_goal = False
@@ -69,15 +69,12 @@ class Jubble(object):
         self.goal_x = self.goal_y = None
         self.goal_jubble = None
 
-        # TODO: get rid of this debugging
-        self.old_goal_jubble_position = None
-
     def update(self):
         """Update the position and status of the jubble by taking into account
         all relevant details.
         
         """
-        if self.isAlive:
+        if self.is_alive:
             # Head toward the jubble goal if the jubble goal is within the
             # detection radius
             if self.has_jubble_goal:
@@ -103,7 +100,7 @@ class Jubble(object):
         """
         assert self.has_jubble_goal
 
-        if self.goal_jubble.isAlive and self.can_chase_jubble(self.goal_jubble):
+        if self.goal_jubble.is_alive and self.can_chase_jubble(self.goal_jubble):
             self.set_coord_goal(self.goal_jubble.x, self.goal_jubble.y)
         else:
             self.has_jubble_goal = False
@@ -230,13 +227,13 @@ class Jubble(object):
 
     def colliding_with_jubble(self, other):
         """Determine whether this jubble is currently colliding with another."""
-        return self.isAlive and other.isAlive and \
+        return self.is_alive and other.is_alive and \
                circles_are_touching(self.get_pos(), other.get_pos(),
                                     self.get_radius(), other.get_radius())
 
     def kill(self):
         """Kill this jubble and set all relevant attributes to reflect this."""
-        self.isAlive = False
+        self.is_alive = False
         self.colour = DEATH_COLOUR
 
     def _correct_offmap_drift(self):
@@ -260,24 +257,30 @@ class Jubble(object):
         return (self.x, self.y)
 
     def draw(self, overriding_colour=None):
+
         """Draw the jubble sprite.
         
         The `colour` keyword argument allows for all the jubble's colours to be
         overwritten with a single colour.
 
         """
+
         if overriding_colour is not None:
             # A colour has been specified that overrides the defaults.
             # Use that colour for everything, instead of the defaults
             self._draw_viewing_angle(overriding_colour)
-            if self.isAlive and self.has_jubble_goal:
+
+            if self.is_alive and self.has_jubble_goal:
                 self._draw_jubble_goal(overriding_colour)
+
             self._draw_body(overriding_colour)
             self._draw_nose(overriding_colour)
         else:
             self._draw_viewing_angle(VIEWING_ANGLE_LINE_COLOUR)
-            if self.isAlive and self.has_jubble_goal:
+
+            if self.is_alive and self.has_jubble_goal:
                 self._draw_jubble_goal((255, 0, 0))
+
             self._draw_body(self.colour)
             self._draw_nose(self.colour)
 
@@ -319,20 +322,21 @@ class Jubble(object):
     def _draw_jubble_goal(self, colour):
         """Draw a line representing the jubble this jubble is targetting.
 
-        LOADS of debugging stuff here. TODO: get rid of it"""
-        
+        LOADS of debugging stuff here. TODO: get rid of it!!
 
+        """
         pygame.draw.line(
             self.screen, colour,
             self.get_pos(),
-            self.goal_jubble.get_pos() if self.old_goal_jubble_position is None \
-            else self.old_goal_jubble_position,
+            self.goal_jubble.get_pos(),
             1)
-        self.old_goal_jubble_position = self.goal_jubble.get_pos()
 
     def erase(self):
         """Fill in the jubble's current position with the background colour."""
         self.draw(overriding_colour=BG_COLOUR)
+
+    def __cmp__(self, other):
+        return (self.id == other.id)
 
 
 def main():
@@ -346,7 +350,7 @@ def main():
     running = True
 
     while running:
-        update_jubbles(jubbles)
+        jubbles = update_jubbles(jubbles)
                 
         # Refresh the display
         pygame.display.flip()
@@ -363,29 +367,49 @@ def main():
                     j.set_coord_goal(*e.pos)
 
         # Add a new jubble for the first 10 frames
-        if len([j for j in jubbles if j.isAlive]) < 10:
+        if len([j for j in jubbles if j.is_alive]) < 10:
             jubbles.append(Jubble(screen))
 
 
-def update_jubbles(jubbles):
-    # Update jubbles and redraw them
-    for j in jubbles:
-        j.erase()
-        j.update()
-        j.draw()
+def update_jubbles(old_jubbles):
+    """Run a single iteration of jubble movement on the screen."""
 
-        for oj in jubbles:
-            if j.isAlive and oj.isAlive and j is not oj:
-                # Set chases
-                if j.can_detect_jubble(oj) and \
-                   j.will_fight_with_jubble(oj) and \
-                   not j.has_jubble_goal:
-                    j.set_jubble_goal(oj)
+    # Erase all jubbles from the screen
+    for j in xrange(len(old_jubbles)):
+         old_jubbles[j].erase()
 
-        # Set combats / defeats
-        if j.has_jubble_goal and j.colliding_with_jubble(j.goal_jubble):
-            if j.will_win_against_jubble(j.goal_jubble):
-                j.goal_jubble.kill()
+    # Kill all jubbles which should be killed
+    for j in xrange(len(old_jubbles)):
+        # If a jubble is colliding with its goal, if it can kill the goal, kill
+        # the goal
+        if old_jubbles[j].has_jubble_goal and \
+           old_jubbles[j].colliding_with_jubble(old_jubbles[j].goal_jubble):
+
+            if old_jubbles[j].will_win_against_jubble(old_jubbles[j].goal_jubble):
+                old_jubbles[j].goal_jubble.kill()
+
+    # Create the new set of jubbles which will now be displayed on-screen
+    new_jubbles = copy.copy(old_jubbles)
+
+    # Set new chase targets
+    for j in xrange(len(new_jubbles)):
+        for oj in xrange(len(old_jubbles)):
+            if j != oj and old_jubbles[j].is_alive and old_jubbles[oj].is_alive:
+
+                if not old_jubbles[j].has_jubble_goal and \
+                   old_jubbles[j].can_detect_jubble(old_jubbles[oj]) and \
+                   old_jubbles[j].will_fight_with_jubble(old_jubbles[oj]):
+                    new_jubbles[j].set_jubble_goal(new_jubbles[oj])
+
+    # Update jubbles
+    for j in xrange(len(new_jubbles)):
+        new_jubbles[j].update()
+
+    # Draw updated jubbles
+    for j in xrange(len(new_jubbles)):
+        new_jubbles[j].draw()
+
+    return new_jubbles
 
 
 def blueMoon(chance):
@@ -396,6 +420,9 @@ def rand_colour():
     """Generate a random RGB colour in tuple format."""
     return tuple(random.randrange(0, 256) for i in range(3))
 
+def rand_id():
+    """Generate a random ID in range (0, INT_MAX)."""
+    return random.randrange(0, 1<<31)
 
 ### Geometry stuff
 
