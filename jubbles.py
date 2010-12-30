@@ -202,6 +202,17 @@ class Jubble(object):
         """
         return self.age >= other.age and self.can_detect_jubble(other)
 
+    def will_be_drawn(self):
+        """Determine whether a jubble should be drawn.
+
+        A jubble should NOT be drawn if it is dead and more than
+        `TIME_TAKEN_TO_DECOMPOSE` time units have passed since its death. By
+        this stage, it appears as a white silhouette anyway.
+
+        """
+        return self.is_alive or \
+               (self.age - self.age_of_death) < TIME_TAKEN_TO_DECOMPOSE
+
     def can_chase_jubble(self, other):
         """Decide whether another jubble can be chased.
 
@@ -250,12 +261,9 @@ class Jubble(object):
 
     def get_radius(self):
         """Get the size of the jubble's radius (in px)."""
-        if not self.is_alive:
-            age = self.age_of_death
-        elif self.age >= MATURE_AGE:
+        age = self.age if self.is_alive else self.age_of_death
+        if age >= MATURE_AGE:
             age = MATURE_AGE
-        else:
-            age = self.age
         # Get the current age as a fraction of the maturity age, then find
         # this position on the scale from BIRTH_SIZE to MATURE_SIZE
         return age / MATURE_AGE * (MATURE_SIZE-BIRTH_SIZE) + BIRTH_SIZE
@@ -402,6 +410,7 @@ def update_jubbles(old_jubbles):
     # Create the new set of jubbles which will now be displayed on-screen
     new_jubbles = copy.copy(old_jubbles)
 
+
     # Set new chase targets
     for j in xrange(len(new_jubbles)):
         for oj in xrange(len(old_jubbles)):
@@ -411,6 +420,9 @@ def update_jubbles(old_jubbles):
                    old_jubbles[j].can_detect_jubble(old_jubbles[oj]) and \
                    old_jubbles[j].will_fight_with_jubble(old_jubbles[oj]):
                     new_jubbles[j].set_jubble_goal(new_jubbles[oj])
+
+    # Filter out jubbles that are dead and fully decomposed
+    new_jubbles = [nj for nj in new_jubbles if nj.will_be_drawn()]
 
     # Update jubbles
     for j in xrange(len(new_jubbles)):
@@ -479,4 +491,3 @@ def cross_product(a, b):
 '''
 
 main()
-

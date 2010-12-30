@@ -1,4 +1,4 @@
-Make jubbles fade out when they die and eventually disappear from the jubble
+DONE: Make jubbles fade out when they die and eventually disappear from the jubble
 array.
 
 Make jubbles not go through other jubbles.
@@ -13,4 +13,6 @@ have `old_jubbles` and `new_jubbles`, and new_jubbles is built by iterating over
 all the old_jubbles. This also lets you get rid of h4x for red goal lines.
 
 Find how you do layers in pygame and do them. Put dead people on the bottom
-layer, live jubbles on the top layer, etc.
+layer, live jubbles on the top layer, etc. EDIT: turns out that pygame layers
+are directly linked to sprites. Since I can't be bothered using sprites, I may
+have to improvise my own layering system.

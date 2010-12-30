@@ -1,4 +1,5 @@
-**Jubblution README**
+Jubblution README
+=================
 
 You'd have to be an idiot to not get this to work. Download jubbles.py, run
 it. Simple as that.
