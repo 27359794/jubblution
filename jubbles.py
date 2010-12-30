@@ -253,35 +253,44 @@ class Jubble(object):
         """Get the (x,y) position of this jubble."""
         return (self.x, self.y)
 
-    def draw(self):
-        """Draw the jubble sprite."""
+    def draw(self, colour=None):
+        """Draw the jubble sprite.
+        
+        The `colour` keyword argument allows for all the jubble's colours to be
+        overwritten with a single colour.
+
+        """
         size = self.get_radius()
 
         # Draw the viewing angle (DEBUGGING ONLY)
         left_x, left_y = to_cartesian(self.angle - DEF_DETECTION_SLICE / 2, 100)
         right_x, right_y = to_cartesian(self.angle + DEF_DETECTION_SLICE / 2, 100)
         pygame.draw.line(
-            self.screen, (200, 200, 200),
+            self.screen, colour if colour is not None else (200, 200, 200),
             (self.x, self.y),
             (self.x + left_x, self.y + left_y),
             2)
         pygame.draw.line(
-            self.screen, (200, 200, 200),
+            self.screen, colour if colour is not None else (200, 200, 200),
             (self.x, self.y),
             (self.x + right_x, self.y + right_y),
             2)
 
         # Draw the body
-        pygame.draw.circle(self.screen, self.colour, 
-                           self.get_pos(), size)
+        pygame.draw.circle(
+            self.screen, colour if colour is not None else self.colour,
+            self.get_pos(), size)
 
         # Draw the nose
         nose_x, nose_y = to_cartesian(self.angle, size)
         pygame.draw.line(
-            self.screen, self.colour,
+            self.screen, colour if colour is not None else self.colour,
             (self.x, self.y),
             (self.x + NOSE_TO_BODY*nose_x, self.y + NOSE_TO_BODY*nose_y),
             NOSE_WIDTH)
+
+    def erase(self):
+        self.draw(colour=BG_COLOUR)
 
 
 ### Main-loop
@@ -291,13 +300,15 @@ def main():
     pygame.display.set_caption("Jubblution")
     clock = pygame.time.Clock()
 
+    screen.fill(BG_COLOUR)
+
     jubbles = [Jubble(screen)]
     running = True
 
     while running:
-        # Clear the screen and update jubbles
-        screen.fill(BG_COLOUR)
+        # Update jubbles and redraw them
         for j in jubbles:
+            j.erase()
             j.update()
             j.draw()
 
@@ -330,7 +341,7 @@ def main():
         clock.tick(FRAME_RATE)
 
         # Add a new jubble for the first 10 frames
-        if len(jubbles) < 10:
+        if len([1 for j in jubbles if j.isAlive]) < 10:
             jubbles.append(Jubble(screen))
 
 
