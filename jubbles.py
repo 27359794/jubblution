@@ -19,6 +19,7 @@ DEF_DETECTION_SLICE = math.pi / 2.0  # A jubble can see in a 90deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
 DEATH_AGE = 3000.0  # A jubble dies after it turns 3000
+TIME_TAKEN_TO_DECOMPOSE = 300.0  # A dead jubble decomposes on screen for this
 
 BIRTH_SIZE = 5.0
 MATURE_SIZE = 15.0
@@ -60,8 +61,11 @@ class Jubble(object):
         self.angle = DEF_ANGLE
         self.speed = DEF_SPEED
         self.detection_radius = DEF_DETECTION_RADIUS
+        
+        # Set age-related stuff
         self.age = 0
         self.is_alive = True
+        self.age_of_death = None
 
         # It currently has no goals
         self.has_coord_goal = False
@@ -87,7 +91,8 @@ class Jubble(object):
                 self._add_random_angle_shift()
 
             self._move_one_unit()
-            self._get_older()
+
+        self._get_older()
 
     def _handle_jubble_goal(self):
         """If the jubble we're aiming for is alive and in range, chase it.
@@ -139,7 +144,7 @@ class Jubble(object):
     def _get_older(self):
         """Age the jubble by one frame's worth."""
         self.age += 1
-        if self.age >= DEATH_AGE:
+        if self.age >= DEATH_AGE and self.is_alive:
             self.kill()
 
     def set_coord_goal(self, gx, gy):
@@ -234,6 +239,7 @@ class Jubble(object):
     def kill(self):
         """Kill this jubble and set all relevant attributes to reflect this."""
         self.is_alive = False
+        self.age_of_death = self.age
 
     def _correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
@@ -244,12 +250,15 @@ class Jubble(object):
 
     def get_radius(self):
         """Get the size of the jubble's radius (in px)."""
-        if self.age >= MATURE_AGE:
-            return MATURE_SIZE
+        if not self.is_alive:
+            age = self.age_of_death
+        elif self.age >= MATURE_AGE:
+            age = MATURE_AGE
         else:
-            # Get the current age as a fraction of the maturity age, then find
-            # this position on the scale from BIRTH_SIZE to MATURE_SIZE
-            return self.age / MATURE_AGE * (MATURE_SIZE-BIRTH_SIZE) + BIRTH_SIZE
+            age = self.age
+        # Get the current age as a fraction of the maturity age, then find
+        # this position on the scale from BIRTH_SIZE to MATURE_SIZE
+        return age / MATURE_AGE * (MATURE_SIZE-BIRTH_SIZE) + BIRTH_SIZE
 
     def get_pos(self):
         """Get the (x,y) position of this jubble."""
@@ -263,8 +272,10 @@ class Jubble(object):
 
         """
         if not self.is_alive:
-            self._draw_body(DEATH_COLOUR)
-            self._draw_nose(DEATH_COLOUR)
+            death_colour = generate_death_colour(
+                (self.age - self.age_of_death) / TIME_TAKEN_TO_DECOMPOSE)
+            self._draw_body(death_colour)
+            self._draw_nose(death_colour)
         else:
             self._draw_viewing_angle(VIEWING_ANGLE_LINE_COLOUR)
 
@@ -411,6 +422,13 @@ def update_jubbles(old_jubbles):
 
     return new_jubbles
 
+
+def generate_death_colour(decompositionFraction):
+    """Generate the colour of a dead jubble based on how line it's been dead."""
+    # Cap the fraction at 1.0
+    if decompositionFraction >= 1.0:
+        decompositionFraction = 1.0
+    return (int(255 * decompositionFraction),)*3
 
 def blueMoon(chance):
     """Returns true with a probability of `chance`."""
