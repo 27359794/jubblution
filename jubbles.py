@@ -17,7 +17,8 @@ DEF_DETECTION_RADIUS = 150.0
 DEF_DETECTION_SLICE = math.pi/2  # A jubble can see in a 90deg angle ahead
 
 MATURE_AGE = 600.0  # A jubble stops growing after it turns 300
-DEATH_AGE = 2000.0  # A jubble dies after it turns 1000
+############ DEBUG
+DEATH_AGE = 20000.0  # A jubble dies after it turns 1000
 
 BIRTH_SIZE = 5.0
 MATURE_SIZE = 15.0
@@ -185,13 +186,14 @@ class Jubble(object):
         """Determine whether this jubble will win a fight against another
         jubble.
 
-        Currently, the older jubble will always win.
+        Currently, the winner has to be a) older than the other and b) can
+        detect the other (to prevent accidental kills).
 
         Note that unlike the 'will fight with jubble' function, this one can be
         non-deterministic as it will only happen once between two jubbles.
 
         """
-        return self.age >= other.age
+        return self.age >= other.age and self.can_detect_jubble(other)
 
     def can_chase_jubble(self, other):
         """Decide whether another jubble can be chased.
@@ -252,19 +254,19 @@ class Jubble(object):
         """Get the (x,y) position of this jubble."""
         return (self.x, self.y)
 
-    def draw(self, overridingColour=None):
+    def draw(self, overriding_colour=None):
         """Draw the jubble sprite.
         
         The `colour` keyword argument allows for all the jubble's colours to be
         overwritten with a single colour.
 
         """
-        if overridingColour is not None:
+        if overriding_colour is not None:
             # A colour has been specified that overrides the defaults.
             # Use that colour for everything, instead of the defaults
-            self._draw_viewing_angle(overridingColour)
-            self._draw_body(overridingColour)
-            self._draw_nose(overridingColour)
+            self._draw_viewing_angle(overriding_colour)
+            self._draw_body(overriding_colour)
+            self._draw_nose(overriding_colour)
         else:
             self._draw_viewing_angle(VIEWING_ANGLE_LINE_COLOUR)
             self._draw_body(self.colour)
@@ -307,7 +309,7 @@ class Jubble(object):
 
     def erase(self):
         """Fill in the jubble's current position with the background colour."""
-        self.draw(overridingColour=BG_COLOUR)
+        self.draw(overriding_colour=BG_COLOUR)
 
 
 def main():
@@ -321,7 +323,7 @@ def main():
     running = True
 
     while running:
-        updateJubbles(jubbles)
+        update_jubbles(jubbles)
                 
         # Refresh the display
         pygame.display.flip()
@@ -337,29 +339,31 @@ def main():
                 for j in jubbles:
                     j.set_coord_goal(*e.pos)
 
-            # Add a new jubble for the first 10 frames
-            if len([1 for j in jubbles if j.isAlive]) < 10:
-                jubbles.append(Jubble(screen))
+        # Add a new jubble for the first 10 frames
+        if len([1 for j in jubbles if j.isAlive]) < 10:
+            jubbles.append(Jubble(screen))
 
 
-def updateJubbles(jubbles):
+def update_jubbles(jubbles):
     # Update jubbles and redraw them
     for j in jubbles:
         j.erase()
         j.update()
         j.draw()
 
-            # Set jubbles on other jubbles
         for oj in jubbles:
             if j.isAlive and oj.isAlive and j is not oj:
-                if j.can_detect_jubble(oj) and j.will_fight_with_jubble(oj):
+
+                # Set chases
+                if j.can_detect_jubble(oj) and \
+                   j.will_fight_with_jubble(oj) and \
+                   not j.has_jubble_goal:
                     j.set_jubble_goal(oj)
 
-                    if j.colliding_with_jubble(oj):
-                        if j.will_win_against_jubble(oj):
-                            oj.kill()
-                        else:
-                            j.kill()
+            # Set combats / defeats
+            if j.has_jubble_goal and j.colliding_with_jubble(j.goal_jubble):
+                if j.will_win_against_jubble(j.goal_jubble):
+                    j.goal_jubble.kill()
 
 
 def blueMoon(chance):
@@ -392,6 +396,7 @@ def circles_are_touching(centre1, centre2, radius1, radius2):
     less than or equal to the sum of their radii.
 
     """
+    print 'touching'
     return dist(centre1, centre2) <= radius1 + radius2
 
 '''
