@@ -234,7 +234,6 @@ class Jubble(object):
     def kill(self):
         """Kill this jubble and set all relevant attributes to reflect this."""
         self.is_alive = False
-        self.colour = DEATH_COLOUR
 
     def _correct_offmap_drift(self):
         """If you find yourself heading off the map, correct your trajectory."""
@@ -256,25 +255,16 @@ class Jubble(object):
         """Get the (x,y) position of this jubble."""
         return (self.x, self.y)
 
-    def draw(self, overriding_colour=None):
-
+    def draw(self):
         """Draw the jubble sprite.
         
         The `colour` keyword argument allows for all the jubble's colours to be
         overwritten with a single colour.
 
         """
-
-        if overriding_colour is not None:
-            # A colour has been specified that overrides the defaults.
-            # Use that colour for everything, instead of the defaults
-            self._draw_viewing_angle(overriding_colour)
-
-            if self.is_alive and self.has_jubble_goal:
-                self._draw_jubble_goal(overriding_colour)
-
-            self._draw_body(overriding_colour)
-            self._draw_nose(overriding_colour)
+        if not self.is_alive:
+            self._draw_body(DEATH_COLOUR)
+            self._draw_nose(DEATH_COLOUR)
         else:
             self._draw_viewing_angle(VIEWING_ANGLE_LINE_COLOUR)
 
@@ -333,7 +323,17 @@ class Jubble(object):
 
     def erase(self):
         """Fill in the jubble's current position with the background colour."""
-        self.draw(overriding_colour=BG_COLOUR)
+        if not self.is_alive:
+            self._draw_body(BG_COLOUR)
+            self._draw_nose(BG_COLOUR)
+        else:
+            self._draw_viewing_angle(BG_COLOUR)
+
+            if self.is_alive and self.has_jubble_goal:
+                self._draw_jubble_goal(BG_COLOUR)
+
+            self._draw_body(BG_COLOUR)
+            self._draw_nose(BG_COLOUR)
 
     def __cmp__(self, other):
         return (self.id == other.id)
@@ -461,3 +461,4 @@ def cross_product(a, b):
 '''
 
 main()
+
