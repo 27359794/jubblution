@@ -1,14 +1,18 @@
-Jubblution README
-=================
+Jubblution
+==========
 
-You'd have to be an idiot to not get this to work. Download jubbles.py, run
-it. Simple as that.
+A little pygame experiment from a few years back. Randomly generated 'jubbles' move around the screen. Each jubble preys on smaller jubbles and runs away from larger jubbles.
 
-* pygame obviously has to be installed first. On ubuntu:
+Requirements
+------------
 
-    apt-get install python-pygame
+* Python 2.6.x-2.7.x
+* `pygame` module
 
-* guaranteed to work on Python 2.6. Will probably work on 2.5 and 2.6+. On
-  anything else, results may vary.
+Usage
+-----
+
+    python jubbles.py
+    
 
 Happy jubbling!
